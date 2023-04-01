@@ -16,10 +16,36 @@ namespace MvcMovie.Controllers
         private MovieDBContext db = new MovieDBContext();
 
         // GET: Movies
-        public ActionResult Index()
+        //K cần HttpPost vì hđ không thay đổi trạng thái của ứng dụng, chỉ lọc dữ liệu.
+        public ActionResult Index(string movieGenre, string searchString)
         {
+            var GenreLst = new List<string>();
+            var GenreQry = from d in db.Movies
+                           orderby d.Genre
+                           select d.Genre;
+
+            //AddRange được sử dụng để thêm các phần tử của GenreQry vào GenreLst
+            //Distinct() loại bỏ các giá trị trùng lặp
+            GenreLst.AddRange(GenreQry.Distinct());
+            ViewBag.movieGenre = new SelectList(GenreLst);
+
+
+            var movies = from m in db.Movies
+                         select m;
+            if (!String.IsNullOrEmpty(movieGenre))
+            {
+                movies = movies.Where(x => x.Genre == movieGenre);
+            }
+
+            //kiểm tra xem SearchString có giá trị null hoặc chuỗi rỗng hay không.
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                movies = movies.Where(s => s.Title.Contains(searchString));
+            }
+            return View(movies);
+
             //obj db truy xuất đến thuộc tính bảng Movies, hiện list
-            return View(db.Movies.ToList());
+            //return View(db.Movies.ToList());
         }
 
         // GET: Movies/Details/5
@@ -57,8 +83,8 @@ namespace MvcMovie.Controllers
 
 
         //Tránh việc toàn bộ dữ liệu được gửi lên từ form cho vào đối tượng Movie, sd attribute [Bind] chỉ định các thuộc tính cụ thể của đối tượng Movie mà ta muốn lấy từ form
-        //Chỉ những thuộc tính ID, Title, ReleaseDate, Genre và Price của đối tượng Movie sẽ được áp dụng dữ liệu từ form gửi lên
-        public ActionResult Create([Bind(Include = "ID,Title,ReleaseDate,Genre,Price")] Movie movie)
+        //Bind: chỉ những thuộc tính ID, Title, ReleaseDate, Genre và Price của đối tượng Movie sẽ được áp dụng dữ liệu từ form gửi lên
+        public ActionResult Create([Bind(Include = "ID,Title,ReleaseDate,Genre,Price, Rating")] Movie movie)
         {
             //ModelState là obj chứa thông tin về các thuộc tính và giá trị của một đối tượng  khi được gửi lên từ form. Nó được sử dụng để kiểm tra tính hợp lệ của các giá trị được gửi lên từ form.
             //ModelState.IsValid là thuộc tính boolean trả về true nếu tất cả các giá trị của ModelState đều hợp lệ (valid), còn lại là false
@@ -73,6 +99,7 @@ namespace MvcMovie.Controllers
         }
 
         // GET: Movies/Edit/5
+        //The HttpGet Edit method takes the movie ID parameter
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -93,7 +120,7 @@ namespace MvcMovie.Controllers
         // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "ID,Title,ReleaseDate,Genre,Price")] Movie movie)
+        public ActionResult Edit([Bind(Include = "ID,Title,ReleaseDate,Genre,Price,Rating")] Movie movie)
         {
             if (ModelState.IsValid)
             {
@@ -108,6 +135,7 @@ namespace MvcMovie.Controllers
         }
 
         // GET: Movies/Delete/5
+        // phương thức HttpGet Delete không xóa movie đã chỉ định, nó trả về view của movie mà ta có thể gửi (HttpPost) yêu cầu xóa. Thực hiện thao tác xóa để đáp ứng yêu cầu GET hoặc bất kỳ thao tác nào khác làm thay đổi dữ liệu sẽ mở ra một lỗ hổng bảo mật.
         public ActionResult Delete(int? id)
         {
             if (id == null)
